@@ -4,10 +4,11 @@ using System.Collections.Generic;
 
 public class NewBehaviourScript : MonoBehaviour {
 
-	public GameObject centerTile;
-	private GameObject originalTile;
-	private GameObject editedTile;
+	public GameObject originalTile;
+	private GameObject centerTile;
+	private GameObject background;
 	private HashSet<GameObject> changedCubes;
+
 	private float offset;
 	private float gap;
 	private float gapTemp;
@@ -17,72 +18,66 @@ public class NewBehaviourScript : MonoBehaviour {
 	private string group;
 	private Color color;
 	private bool editColor;
+	private bool drawing;
+	private string backgroundColor;
 
+	//canvases for editing and drowing
+	private GameObject canvasEdit;
+	private GameObject canvasDraw;
+	private GameObject canvasHelp;
 
 	// Use this for initialization
 	void Start () {
-		gap = 0.1f;
+		gap = 0.2f;
 		gapTemp = 0.0f;
-		offset = centerTile.collider.bounds.size.x;
+		offset = originalTile.collider.bounds.size.x;
 		group = "t";
-		originalTile = centerTile;
+		centerTile = originalTile;
 		changedCubes = new HashSet<GameObject> ();
 		color = Color.magenta;
 		editColor = false;
+		drawing = false;
+		backgroundColor = "";
+
+		//Find canvases for editing and drowing
+		GameObject[] canvasA = GameObject.FindGameObjectsWithTag ("Edit");
+		canvasEdit = canvasA [0];
+		GameObject[] canvasB = GameObject.FindGameObjectsWithTag ("Draw");
+		canvasDraw = canvasB [0];
+		GameObject[] canvasC = GameObject.FindGameObjectsWithTag ("Help");
+		canvasHelp = canvasC [0];
+		GameObject[] backgroundA = GameObject.FindGameObjectsWithTag ("Background");
+		background = backgroundA [0];
+
+		canvasEdit.SetActive (true);
+		canvasDraw.SetActive (false);
+		canvasHelp.SetActive (false);
+
+		Camera.main.orthographicSize = 8;
+		Debug.Log (Application.dataPath + "/screenshot" + System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png");
 	}
 	
 	// Update is called once per frame
 	void Update () {
+		if (!drawing) {
+						if (Input.GetMouseButton (0)) {
+								if (editColor) {
+										EditColorOfCubes ();
+								} else {
+										EditShapeOfTile (group);
+								}
+						}
+				} else {
 
-		if (Input.GetMouseButton (0)) {
-			if(editColor){
-			EditColorOfCubes();
-			} else {
-			EditShapeOfTile(group);
-			}
-		}
+						if ((Input.GetAxis ("Mouse ScrollWheel") > 0) && (Camera.main.orthographicSize < 50)) { // forward
+								Camera.main.orthographicSize++;
+								StartCoroutine ("CheckForCameraProjectionSize", Camera.main.orthographicSize);
+						}
 
-		if (Input.GetMouseButtonDown (1)) {
-			count = 0;
-			//StartCoroutine("Flood", centerTile);
-			GameObject parentTile = CreateTile(centerTile);
-			StartCoroutine("Flood", parentTile);
-		}
-
-		if ((Input.GetAxis("Mouse ScrollWheel") > 0) && (Camera.main.orthographicSize < 50)) // forward
-		{
-			Camera.main.orthographicSize++;
-			StartCoroutine("CheckForCameraProjectionSize", Camera.main.orthographicSize);
-		}
-
-		if ((Input.GetAxis("Mouse ScrollWheel") < 0) && (Camera.main.orthographicSize > 10)) // back
-		{
-			Camera.main.orthographicSize--;
-		}
-
-		if (Input.GetKey ("d")) {
-			DestroyClones();
-		}
-
-		if (Input.GetKey ("y")) {
-			color = Color.white;
-		}
-
-		if (Input.GetKey ("u")) {
-			color = Color.magenta;
-		}
-
-		if (Input.GetKey ("i")) {
-			color = Color.black;
-		}
-
-		if (Input.GetKey ("o")) {
-			color = Color.blue;
-		}
-
-		if (Input.GetKey ("p")) {
-			color = Color.red;
-		}
+						if ((Input.GetAxis ("Mouse ScrollWheel") < 0) && (Camera.main.orthographicSize > 10)) { // back
+								Camera.main.orthographicSize--;
+						}
+				}
 	}
 
 	//wait n seconds for not scrolling, than floodfill
@@ -94,7 +89,7 @@ public class NewBehaviourScript : MonoBehaviour {
 		}
 	}
 
-	//Floodfill the whole screen with clones of original tile, one by one until 40 are created, than 8 at once
+	//Floodfill the whole screen with clones of center tile, one by one until 40 are created, than 8 at once
 	IEnumerator Flood(GameObject gameObj){
 
 		cameraPosition = new Vector3(0, 0, -10);
@@ -157,7 +152,7 @@ public class NewBehaviourScript : MonoBehaviour {
 					if(group.Equals("t_rot")) tileLeft.transform.Rotate(Vector3.forward, 90f);
 					que.Enqueue(tileLeft);
 				}
-				if(count < 40 || count % (int)(count/8) == 0){
+				if(count < 40 || count % (int)(count/3) == 0){
 				yield return null;
 				}
 			}
@@ -173,10 +168,9 @@ public class NewBehaviourScript : MonoBehaviour {
 
 		RaycastHit hit;
 		Physics.Raycast (Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector3.forward, out hit);
-		if (!hit.collider.tag.Equals ("Tile")) {
+		if (hit.collider.tag.Equals ("Cube")) {
 			hit.collider.gameObject.renderer.material.color = color;
 		}
-
 
 		boxColliderOfTile.size = sizeOfTileCollider;
 	}
@@ -189,10 +183,6 @@ public class NewBehaviourScript : MonoBehaviour {
 		Vector3 sizeOfTileCollider = boxColliderOfTile.size;
 		boxColliderOfTile.size = new Vector3(0, 0, 0);
 
-		//Vector3 topRightCubePosition = FindExtremeCubes (true);
-		//Vector3 bottomLeftCubePosition = FindExtremeCubes (false);
-
-
 		RaycastHit hit;
 		Physics.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector3.forward, out hit);
 		//Debug.Log(Camera.main.ScreenToWorldPoint(Input.mousePosition));
@@ -200,48 +190,64 @@ public class NewBehaviourScript : MonoBehaviour {
 			//Debug.Log("Found a tile");
 			GameObject cube = hit.collider.gameObject;
 			//Debug.Log(cube.transform.position);
-
-			switch (group) {
-				case "t":
-					cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.x - offset, cube.transform.position.y) :
-						new Vector3 (cube.transform.position.x + offset, cube.transform.position.y);
-				changedCubes.Add(cube);
-						break;
-
-				case "t_rot":
-				if(changedCubes.Contains(cube)){
-					changedCubes.Remove(cube);
-					cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (-cube.transform.position.y, -offset + cube.transform.position.x) :
-						new Vector3 (-cube.transform.position.y, +offset + cube.transform.position.x);
-				} else {
-					cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.y, offset - cube.transform.position.x) :
-						new Vector3 (cube.transform.position.y, -offset - cube.transform.position.x);
-					changedCubes.Add(cube);
-				}
-						break;
-
-				case "t_rot_ref":
-					cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.y, -offset + cube.transform.position.x) :
-					new Vector3 (cube.transform.position.y, offset + cube.transform.position.x);
-				changedCubes.Add(cube);
-					break;
-				case "t_ref":
-					cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.x - offset, -cube.transform.position.y) :
-						new Vector3 (cube.transform.position.x + offset, -cube.transform.position.y);
-				changedCubes.Add(cube);
-					break;
-				default:
-					Debug.Log ("No symmetry group was selected");
-				break;
-			}
+			MoveTile(group, cube);
 		}
 		boxColliderOfTile.size = sizeOfTileCollider;
 		//return tile;
 	}
 
-	//reduce boarder cubes with gap value
-	void CheckForBoarderCubes(){
+	void MoveTile(string group, GameObject cube){
+		switch (group) {
+		case "t":
+			if(changedCubes.Contains(cube)) {
+				changedCubes.Remove(cube);
+			} else {
+				changedCubes.Add(cube);
+			}
+			cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.x - offset, cube.transform.position.y) :
+				new Vector3 (cube.transform.position.x + offset, cube.transform.position.y);
+			break;
+			
+		case "t_rot":
+			if(changedCubes.Contains(cube)){
+				changedCubes.Remove(cube);
+				cube.transform.position = (cube.transform.position.y>0.0f) ? new Vector3 (offset - cube.transform.position.y, cube.transform.position.x) :
+					new Vector3 (-offset -cube.transform.position.y, cube.transform.position.x);
+			} else {
+				cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.y, offset - cube.transform.position.x) :
+					new Vector3 (cube.transform.position.y, -offset - cube.transform.position.x);
+				changedCubes.Add(cube);
+			}
+			break;
+			
+		case "t_rot_ref":
+			if(changedCubes.Contains(cube)){
+				changedCubes.Remove(cube);
+				cube.transform.position = (cube.transform.position.y>0.0f) ? new Vector3 (-offset + cube.transform.position.y, cube.transform.position.x) :
+					new Vector3 (+offset +cube.transform.position.y, cube.transform.position.x);
+			} else {
+			cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.y, -offset + cube.transform.position.x) :
+				new Vector3 (cube.transform.position.y, offset + cube.transform.position.x);
+			changedCubes.Add(cube);
+			}
+			break;
+		case "t_ref":
+			if(changedCubes.Contains(cube)) {
+				changedCubes.Remove(cube);
+			} else {
+				changedCubes.Add(cube);
+			}
+			cube.transform.position = (cube.transform.position.x>0.0f) ? new Vector3 (cube.transform.position.x - offset, -cube.transform.position.y) :
+				new Vector3 (cube.transform.position.x + offset, -cube.transform.position.y);
+			break;
+		default:
+			Debug.Log ("No symmetry group was selected");
+			break;
+		}
+	}
 
+	//reduce boarder cubes with gap value
+	void CheckForBoarderCubes(float gap){
 		//temporalely reduce whole tile collider
 		GameObject[] tiles = GameObject.FindGameObjectsWithTag ("Tile");
 		BoxCollider boxColliderOfTile = tiles [0].collider as BoxCollider;
@@ -309,45 +315,34 @@ public class NewBehaviourScript : MonoBehaviour {
 		StartCoroutine("Flood", hit.collider.gameObject);
 	}
 
-	Vector3 FindExtremeCubes(bool last){
-		GameObject[] cubes = GameObject.FindGameObjectsWithTag ("Cube");
-		if (last) {
-			Debug.Log(cubes[0].transform.position);
-			return cubes[0].transform.position;
-		} else {
-			Debug.Log(cubes[cubes.Length-1].transform.position);
-			return cubes[cubes.Length-1].transform.position;
-		}
-	}
-
 	void DestroyClones(){
 		GameObject[] gameObjects = GameObject.FindGameObjectsWithTag ("Clone");
 		for (var i = 0; i < gameObjects.Length; i ++) {
 			Destroy (gameObjects [i]);
 		}
-		gameObjects = GameObject.FindGameObjectsWithTag ("Tile");
+		gameObjects = GameObject.FindGameObjectsWithTag ("Tile4x4");
 		for (var i = 0; i < gameObjects.Length; i ++) {
 			Destroy (gameObjects [i]);
 		}
-		centerTile = (GameObject)Instantiate(editedTile, Vector3.zero, Quaternion.identity);
 	}
 
 	GameObject CreateTile(GameObject cube){
 
-		CheckForBoarderCubes ();
+		CheckForBoarderCubes (gap);
 
 		GameObject tile = new GameObject ();
 		tile.name = "SquareTile4x4";
 		tile.transform.position = new Vector3 (cube.collider.bounds.size.x/2, cube.collider.bounds.size.y/2, 0);
 		BoxCollider bc = tile.AddComponent ("BoxCollider") as BoxCollider;
 		bc.size = new Vector3 (2*cube.collider.bounds.size.x, 2*cube.collider.bounds.size.y, 2);
-		bc.tag = "Tile";
+		bc.tag = "Tile4x4";
 
+		GameObject cubeOrigin = (GameObject)Instantiate(cube, cube.transform.position, Quaternion.identity);
 		GameObject cubeRight = (GameObject)Instantiate(cube, cube.transform.position + new Vector3(offset, 0, 0), Quaternion.identity);
 		GameObject cubeTop = (GameObject)Instantiate(cube, cube.transform.position + new Vector3(0, offset, 0), Quaternion.identity);
 		GameObject cubeTopRight = (GameObject)Instantiate(cube, cube.transform.position + new Vector3(offset, offset, 0), Quaternion.identity);
 
-		cube.transform.parent = tile.transform;
+		cubeOrigin.transform.parent = tile.transform;
 		cubeRight.transform.parent = tile.transform;
 		cubeTop.transform.parent = tile.transform;
 		cubeTopRight.transform.parent = tile.transform;
@@ -383,59 +378,85 @@ public class NewBehaviourScript : MonoBehaviour {
 		return tile;
 	}
 
-	public void SelectColor(string str){
-		switch (str) {
-		case ("white"):
-			color = Color.white;
-			return;
-		case ("black"):
-			color = Color.black;
-			return;
-		case ("blue"):
-			color = Color.blue;
-			return;
-		case ("magenta"):
-			color = Color.magenta;
-			return;
-		case ("cyan"):
-			color = Color.cyan;
-			return;
-		case("red"):
-			color = Color.red;
-			return;
-		case("green"):
-			color = Color.green;
-			return;
-		case ("grey"):
-			color = Color.grey;
-			return;
-		default:
-			return;;
+	void ReordinateTheCubes(bool restore){
+		GameObject[] temp = new GameObject[changedCubes.Count];
+		changedCubes.CopyTo (temp);
+		changedCubes.Clear();
+		for (int i = 0; i < temp.Length; i++) {
+			GameObject cube = temp[i];
+			MoveTile(group, cube);
 		}
 	}
 
-	public void SelectGroup(string str){
+	void RestoreCubes(){
+		GameObject[] temp = new GameObject[changedCubes.Count];
+		HashSet<GameObject> tempHash = new HashSet<GameObject> (changedCubes);
+		changedCubes.CopyTo (temp);
+		for (int i = 0; i < temp.Length; i++) {
+			GameObject cube = temp[i];
+			MoveTile(group, cube);
+		}
+		changedCubes = tempHash;
+	}
 
+	public void SelectColor(string str){
+				if (str.Equals (backgroundColor)) {
+						background.renderer.material.color = color;
+				}
+		editColor = true;
+		switch (str) {
+		case ("white"):
+			color = Color.white;
+			break;
+		case ("black"):
+			color = Color.black;
+			break;
+		case ("blue"):
+			color = Color.blue;
+			break;
+		case ("magenta"):
+			color = Color.magenta;
+			break;
+		case ("cyan"):
+			color = Color.cyan;
+			break;
+		case("red"):
+			color = Color.red;
+			break;
+		case("green"):
+			color = Color.green;
+			break;
+		case ("grey"):
+			color = Color.grey;
+			Debug.Log("tralala");
+			break;
+		}
+	backgroundColor = str;
+	}
+
+	public void SelectGroup(string str){
+		RestoreCubes ();
 		switch (group) {
 		case ("t"):
 			if(str.Equals("rot")) group = "t_rot";
 			if(str.Equals("ref")) group = "t_ref";
-			return;
+			break;
 		case("t_rot"):
 			if(str.Equals("rot")) group = "t";
 			if(str.Equals("ref")) group = "t_rot_ref";
-			return;
+			break;
 		case("t_rot_ref"):
 			if(str.Equals("rot")) group = "t_ref";
 			if(str.Equals("ref")) group = "t_rot";
-			return;
+			break;
 		case("t_ref"):
 			if(str.Equals("rot")) group = "t_rot_ref";
 			if(str.Equals("ref")) group = "t";
-			return;
+			break;
 		default:
-			return;
+			break;
 		}
+		ReordinateTheCubes (false);
 	}
 
 	public void EnableOffset(){
@@ -452,14 +473,53 @@ public class NewBehaviourScript : MonoBehaviour {
 		editColor = false;
 	}
 
-	public void Edit(){
-
+	public void ResetAll(){
+		Application.LoadLevel ("first");
 	}
+
+	public void Edit(){
+		DestroyClones ();
+
+		canvasEdit.SetActive (true);
+		canvasDraw.SetActive (false);
+
+		drawing = false;
+		Camera.main.orthographicSize = 8;
+
+		Invoke ("EnlargeCubes", 0.000f);
+	}
+
+	void EnlargeCubes(){
+		CheckForBoarderCubes (-gap);
+		}
 
 	public void Draw(){
+		canvasEdit.SetActive (false);
+		canvasDraw.SetActive (true);
 
+		drawing = true;
+
+		Camera.main.orthographicSize = 30;
+
+		count = 0;
+		GameObject parentTile = CreateTile(centerTile);
+		StartCoroutine("Flood", parentTile);
 	}
 
+	public void MakeScreenshot(){
+		canvasDraw.SetActive (false);
+		Application.CaptureScreenshot ("../../../screenshot" + System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png");
+		Invoke ("MkScrnsht", 0.0001f);
+	}
+
+	void MkScrnsht(){
+		canvasDraw.SetActive (true);
+	}
+
+	public void ActivateHelp(bool bo){
+		canvasHelp.SetActive (bo);
+		}
+	/*
 	void CreateTile(){
 			float i = -3.5f;
 			float j = -3.5f;
@@ -475,4 +535,17 @@ public class NewBehaviourScript : MonoBehaviour {
 			}
 	}
 
+
+	Vector3 FindExtremeCubes(bool last){
+		GameObject[] cubes = GameObject.FindGameObjectsWithTag ("Cube");
+		if (last) {
+			Debug.Log(cubes[0].transform.position);
+			return cubes[0].transform.position;
+		} else {
+			Debug.Log(cubes[cubes.Length-1].transform.position);
+			return cubes[cubes.Length-1].transform.position;
+		}
+	}
+
+	*/
 }
