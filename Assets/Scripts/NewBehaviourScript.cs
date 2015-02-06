@@ -21,10 +21,18 @@ public class NewBehaviourScript : MonoBehaviour {
 	private bool drawing;
 	private string backgroundColor;
 
-	//canvases for editing and drowing
+	//canvases for editing and drowing and help
 	private GameObject canvasEdit;
 	private GameObject canvasDraw;
 	private GameObject canvasHelp;
+
+	//GUI objects
+	private GameObject editShapeButton;
+	private GameObject editColorButton;
+	private GameObject rotationButton;
+	private GameObject reflectionButton;
+	private GameObject marginsButton;
+	private Color skyBlue;
 
 	// Use this for initialization
 	void Start () {
@@ -49,12 +57,24 @@ public class NewBehaviourScript : MonoBehaviour {
 		GameObject[] backgroundA = GameObject.FindGameObjectsWithTag ("Background");
 		background = backgroundA [0];
 
+		//Find GUI buttons
+		GameObject[] editShapeButtons = GameObject.FindGameObjectsWithTag ("EditShape");
+		editShapeButton = editShapeButtons [0];
+		GameObject[] editColorButtons = GameObject.FindGameObjectsWithTag ("EditColor");
+		editColorButton = editColorButtons [0];
+		GameObject[] rotationButtons = GameObject.FindGameObjectsWithTag ("Rotation");
+		rotationButton = rotationButtons [0];
+		GameObject[] reflectionButtons = GameObject.FindGameObjectsWithTag ("Reflection");
+		reflectionButton = reflectionButtons [0];
+		GameObject[] marginsButtons = GameObject.FindGameObjectsWithTag ("Margins");
+		marginsButton = marginsButtons [0];
+		skyBlue = new Color (168, 246, 246);
+
 		canvasEdit.SetActive (true);
 		canvasDraw.SetActive (false);
 		canvasHelp.SetActive (false);
 
 		Camera.main.orthographicSize = 8;
-		Debug.Log (Application.dataPath + "/screenshot" + System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png");
 	}
 	
 	// Update is called once per frame
@@ -399,6 +419,7 @@ public class NewBehaviourScript : MonoBehaviour {
 		changedCubes = tempHash;
 	}
 
+	//GUI methods
 	public void SelectColor(string str){
 				if (str.Equals (backgroundColor)) {
 						background.renderer.material.color = color;
@@ -519,6 +540,43 @@ public class NewBehaviourScript : MonoBehaviour {
 	public void ActivateHelp(bool bo){
 		canvasHelp.SetActive (bo);
 		}
+
+	public Color GetSelectedColor(){
+		return color;
+	}
+
+	public bool IsRotationOn(){
+		if (group.Equals ("t_rot") || group.Equals ("t_rot_ref")) {
+			return true;
+				} else {
+			return false;
+				}
+	}
+
+	public bool IsReflectionOn(){
+		if (group.Equals ("t_ref") || group.Equals ("t_rot_ref")) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public bool IsOffsetOn(){
+		if (offset == 0.0f) {
+			return false;
+				} else {
+			return true;
+				}
+	}
+
+	public bool IsEditModeOn(){
+		if (drawing) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
 	/*
 	void CreateTile(){
 			float i = -3.5f;

@@ -1,8 +1,11 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Scripts/NewBehaviourScript.cs">
+  <MonoDevelop.Ide.Workspace />
+  <MonoDevelop.Ide.Workbench ActiveDocument="../Sheep/Sheep/Assets/Scripts/AI/SheepAI.cs">
     <Files>
-      <File FileName="Assets/Scripts/NewBehaviourScript.cs" Line="510" Column="32" />
+      <File FileName="../Sheep/Sheep/Assets/Scripts/AI/WolfAI.cs" Line="571" Column="1" />
+      <File FileName="../Sheep/Sheep/Assets/Scripts/AI/SheepAI.cs" Line="475" Column="6" />
+      <File FileName="../Sheep/Sheep/Assets/Scripts/AI/CarAI.cs" Line="1" Column="1" />
+      <File FileName="Assets/Scripts/NewBehaviourScript.cs" Line="1" Column="1" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
